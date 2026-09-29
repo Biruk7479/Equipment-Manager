@@ -1,10 +1,10 @@
 from collections.abc import Sequence
 from typing import Any
 
-from sqlalchemy import asc, desc, select
+from sqlalchemy import Row, asc, desc, func, select
 from sqlalchemy.orm import Session, joinedload
 
-from app.models import EquipmentRequest, RequestHistory, RequestStatus
+from app.models import Category, Equipment, EquipmentRequest, RequestHistory, RequestStatus
 from app.repositories.pagination import paginate
 from app.schemas.request import RequestQuery
 
@@ -68,3 +68,16 @@ def list_history(db: Session, request_id: int) -> Sequence[RequestHistory]:
         .where(RequestHistory.request_id == request_id)
         .order_by(RequestHistory.created_at, RequestHistory.id)
     ).all()
+
+
+def count_by_category_and_status(
+    db: Session, requester_id: int | None
+) -> Sequence[Row[tuple[Category, RequestStatus, int]]]:
+    stmt = (
+        select(Equipment.category, EquipmentRequest.status, func.count())
+        .join(EquipmentRequest.equipment)
+        .group_by(Equipment.category, EquipmentRequest.status)
+    )
+    if requester_id is not None:
+        stmt = stmt.where(EquipmentRequest.requester_id == requester_id)
+    return db.execute(stmt).all()
