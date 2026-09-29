@@ -8,7 +8,13 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   headset: "Headset",
 };
 
-export const CATEGORIES = Object.keys(CATEGORY_LABELS) as Category[];
+export const CATEGORIES = [
+  "laptop",
+  "monitor",
+  "mobile_phone",
+  "keyboard",
+  "headset",
+] as const satisfies readonly Category[];
 
 export const STATUS_LABELS: Record<RequestStatus, string> = {
   pending: "Pending",
@@ -16,7 +22,7 @@ export const STATUS_LABELS: Record<RequestStatus, string> = {
   rejected: "Rejected",
 };
 
-export const STATUSES = Object.keys(STATUS_LABELS) as RequestStatus[];
+export const STATUSES = ["pending", "approved", "rejected"] as const satisfies readonly RequestStatus[];
 
 export const ROLE_LABELS: Record<Role, string> = {
   employee: "Employee",
