@@ -1,3 +1,4 @@
+import logging
 import math
 import uuid
 from dataclasses import dataclass
@@ -17,6 +18,8 @@ from app.core.security import (
 from app.models import RefreshToken, User
 from app.repositories import login_failure_repository, refresh_token_repository, user_repository
 from app.schemas.auth import ChangePasswordIn
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -50,11 +53,16 @@ def authenticate(db: Session, email: str, password: str) -> User:
     return user
 
 
-def issue_tokens(db: Session, user: User, session_id: uuid.UUID | None = None) -> TokenPair:
+def issue_tokens(
+    db: Session,
+    user: User,
+    session_id: uuid.UUID | None = None,
+    token_id: uuid.UUID | None = None,
+) -> TokenPair:
     token = refresh_token_repository.add(
         db,
         RefreshToken(
-            id=uuid.uuid4(),
+            id=token_id or uuid.uuid4(),
             session_id=session_id or uuid.uuid4(),
             user_id=user.id,
             expires_at=datetime.now(UTC) + timedelta(days=settings.refresh_token_days),
@@ -69,14 +77,21 @@ def issue_tokens(db: Session, user: User, session_id: uuid.UUID | None = None) -
 
 def rotate_refresh_token(db: Session, raw_token: str) -> tuple[User, TokenPair]:
     payload = decode_token(raw_token, "refresh")
+    now = datetime.now(UTC)
     token = refresh_token_repository.get_by_id(db, uuid.UUID(payload["jti"]), lock=True)
-    if token is None or token.revoked_at is not None or token.expires_at <= datetime.now(UTC):
+    if token is not None and token.replaced_by_id is not None:
+        refresh_token_repository.revoke_all_for_user(db, token.user_id, now)
+        db.commit()
+        logger.warning("Refresh token reuse for user %s; revoked all sessions", token.user_id)
+        raise UnauthorizedError("Session has expired", "session_expired")
+    if token is None or token.revoked_at is not None or token.expires_at <= now:
         raise UnauthorizedError("Session has expired", "session_expired")
     user = user_repository.get_by_id(db, token.user_id)
     if user is None:
         raise UnauthorizedError("Session has expired", "session_expired")
-    token.revoked_at = datetime.now(UTC)
-    return user, issue_tokens(db, user, token.session_id)
+    token.revoked_at = now
+    token.replaced_by_id = uuid.uuid4()
+    return user, issue_tokens(db, user, token.session_id, token.replaced_by_id)
 
 
 def get_session_user(db: Session, access_token: str) -> User:
