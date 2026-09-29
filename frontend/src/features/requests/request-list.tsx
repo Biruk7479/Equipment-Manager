@@ -126,7 +126,7 @@ export function RequestList() {
                 {isManager && <TH className="hidden md:table-cell">Requested by</TH>}
                 <TH>Status</TH>
                 <TH className="hidden sm:table-cell">Submitted</TH>
-                <TH>
+                <TH className="hidden sm:table-cell">
                   <span className="sr-only">Actions</span>
                 </TH>
               </tr>
@@ -152,7 +152,7 @@ export function RequestList() {
                   <TD className="hidden whitespace-nowrap text-ink-muted sm:table-cell">
                     {formatDate(request.created_at)}
                   </TD>
-                  <TD className="text-right">
+                  <TD className="hidden text-right sm:table-cell">
                     <ButtonLink
                       href={`/requests/${request.id}`}
                       variant={isManager && request.status === "pending" ? "secondary" : "ghost"}
