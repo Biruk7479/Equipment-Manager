@@ -18,12 +18,17 @@ const SKIP_REFRESH = ["/auth/login", "/auth/register", "/auth/refresh", "/auth/l
 let refreshing: Promise<boolean> | null = null;
 
 function refreshSession() {
-  refreshing ??= fetch("/api/v1/auth/refresh", { method: "POST" })
-    .then((response) => response.ok)
-    .finally(() => {
-      refreshing = null;
-    });
+  refreshing ??= acrossTabs("session-refresh", () =>
+    fetch("/api/v1/auth/refresh", { method: "POST" }).then((response) => response.ok),
+  ).finally(() => {
+    refreshing = null;
+  });
   return refreshing;
+}
+
+// Refresh tokens are single-use, so tabs must take turns or a concurrent refresh looks like theft.
+async function acrossTabs<T>(lock: string, task: () => Promise<T>): Promise<T> {
+  return "locks" in navigator ? navigator.locks.request(lock, task) : task();
 }
 
 async function request<T>(method: string, path: string, body?: unknown, retry = true): Promise<T> {
