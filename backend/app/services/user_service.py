@@ -1,3 +1,5 @@
+from typing import Any
+
 from sqlalchemy.orm import Session
 
 from app.core.errors import ConflictError
@@ -5,6 +7,7 @@ from app.core.security import hash_password
 from app.models import Role, User
 from app.repositories import user_repository
 from app.schemas.auth import RegisterIn
+from app.schemas.user import UserQuery
 
 
 def create_user(db: Session, data: RegisterIn, role: Role) -> User:
@@ -21,3 +24,7 @@ def create_user(db: Session, data: RegisterIn, role: Role) -> User:
     )
     db.commit()
     return user
+
+
+def list_users(db: Session, query: UserQuery) -> dict[str, Any]:
+    return user_repository.list_page(db, query)
