@@ -1,6 +1,6 @@
 from typing import Any
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.models import Role, User
@@ -27,7 +27,7 @@ def add(db: Session, user: User) -> User:
 
 
 def list_page(db: Session, query: UserQuery) -> dict[str, Any]:
-    stmt = select(User).order_by(User.full_name)
+    stmt = select(User).order_by(func.lower(User.full_name), User.id)
     if query.role:
         stmt = stmt.where(User.role == query.role)
     if query.search:
