@@ -1,3 +1,6 @@
+const FALLBACK = "/dashboard";
+
 export function nextPath(next: string | null) {
-  return next?.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
+  const url = next ? URL.parse(next, window.location.origin) : null;
+  return url?.origin === window.location.origin ? `${url.pathname}${url.search}` : FALLBACK;
 }
