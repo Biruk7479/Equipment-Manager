@@ -5,15 +5,17 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.errors import UnauthorizedError
+from app.core.errors import AppError, UnauthorizedError
 from app.core.security import (
     create_access_token,
     create_refresh_token,
     decode_token,
+    hash_password,
     verify_password,
 )
 from app.models import RefreshToken, User
 from app.repositories import refresh_token_repository, user_repository
+from app.schemas.auth import ChangePasswordIn
 
 
 @dataclass(frozen=True)
@@ -66,3 +68,11 @@ def revoke_refresh_token(db: Session, raw_token: str) -> None:
     if token is not None and token.revoked_at is None:
         token.revoked_at = datetime.now(UTC)
         db.commit()
+
+
+def change_password(db: Session, user: User, data: ChangePasswordIn) -> TokenPair:
+    if not verify_password(data.current_password, user.password_hash):
+        raise AppError("Current password is incorrect", "invalid_password")
+    user.password_hash = hash_password(data.new_password)
+    refresh_token_repository.revoke_all_for_user(db, user.id, datetime.now(UTC))
+    return issue_tokens(db, user)

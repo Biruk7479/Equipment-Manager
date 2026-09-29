@@ -6,7 +6,7 @@ from app.core.config import settings
 from app.core.errors import UnauthorizedError
 from app.dependencies import CurrentUser, DbSession
 from app.models import Role, User
-from app.schemas.auth import LoginIn, RegisterIn, UserOut
+from app.schemas.auth import ChangePasswordIn, LoginIn, RegisterIn, UserOut
 from app.services import auth_service, user_service
 from app.services.auth_service import TokenPair
 
@@ -76,3 +76,11 @@ def logout(db: DbSession, refresh_token: Annotated[str | None, Cookie()] = None)
 @router.get("/me", response_model=UserOut)
 def me(user: CurrentUser) -> User:
     return user
+
+
+@router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)
+def change_password(data: ChangePasswordIn, user: CurrentUser, db: DbSession) -> Response:
+    tokens = auth_service.change_password(db, user, data)
+    response = Response(status_code=status.HTTP_204_NO_CONTENT)
+    set_auth_cookies(response, tokens)
+    return response
