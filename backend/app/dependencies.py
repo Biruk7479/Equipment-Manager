@@ -31,3 +31,12 @@ def require_manager(user: CurrentUser) -> User:
 
 
 CurrentManager = Annotated[User, Depends(require_manager)]
+
+
+def require_employee(user: CurrentUser) -> User:
+    if user.role != Role.EMPLOYEE:
+        raise ForbiddenError("Only employees can request equipment")
+    return user
+
+
+CurrentEmployee = Annotated[User, Depends(require_employee)]
