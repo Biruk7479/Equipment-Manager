@@ -1,3 +1,4 @@
+import math
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -5,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.errors import AppError, UnauthorizedError
+from app.core.errors import AppError, TooManyRequestsError, UnauthorizedError
 from app.core.security import (
     create_access_token,
     create_refresh_token,
@@ -14,7 +15,7 @@ from app.core.security import (
     verify_password,
 )
 from app.models import RefreshToken, User
-from app.repositories import refresh_token_repository, user_repository
+from app.repositories import login_failure_repository, refresh_token_repository, user_repository
 from app.schemas.auth import ChangePasswordIn
 
 
@@ -25,9 +26,27 @@ class TokenPair:
 
 
 def authenticate(db: Session, email: str, password: str) -> User:
+    now = datetime.now(UTC)
+    window = timedelta(minutes=settings.login_lockout_minutes)
+    failures, oldest = login_failure_repository.recent(db, email, now - window)
+    if oldest is not None and failures >= settings.login_max_failures:
+        retry_after = max(1, math.ceil((oldest + window - now).total_seconds()))
+        minutes = math.ceil(retry_after / 60)
+        raise TooManyRequestsError(
+            f"Too many failed sign-in attempts. Try again in {minutes} "
+            f"minute{'s' if minutes != 1 else ''}.",
+            "too_many_login_attempts",
+            headers={"Retry-After": str(retry_after)},
+        )
+
     user = user_repository.get_by_email(db, email)
     if user is None or not verify_password(password, user.password_hash):
+        login_failure_repository.add(db, email)
+        login_failure_repository.delete_before(db, now - window)
+        db.commit()
         raise UnauthorizedError("Invalid email or password", "invalid_credentials")
+
+    login_failure_repository.delete_for_email(db, email)
     return user
 
 

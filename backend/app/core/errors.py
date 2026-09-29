@@ -11,9 +11,12 @@ class AppError(Exception):
     status_code = 400
     code = "bad_request"
 
-    def __init__(self, message: str, code: str | None = None) -> None:
+    def __init__(
+        self, message: str, code: str | None = None, headers: dict[str, str] | None = None
+    ) -> None:
         super().__init__(message)
         self.message = message
+        self.headers = headers
         if code:
             self.code = code
 
@@ -38,6 +41,11 @@ class ConflictError(AppError):
     code = "conflict"
 
 
+class TooManyRequestsError(AppError):
+    status_code = 429
+    code = "too_many_requests"
+
+
 HTTP_ERROR_CODES = {
     400: "bad_request",
     401: "unauthorized",
@@ -45,22 +53,28 @@ HTTP_ERROR_CODES = {
     404: "not_found",
     405: "method_not_allowed",
     409: "conflict",
+    429: "too_many_requests",
 }
 
 
 def error_response(
-    status_code: int, code: str, message: str, details: list[dict[str, Any]] | None = None
+    status_code: int,
+    code: str,
+    message: str,
+    details: list[dict[str, Any]] | None = None,
+    headers: dict[str, str] | None = None,
 ) -> JSONResponse:
     return JSONResponse(
         status_code=status_code,
         content={"error": {"code": code, "message": message, "details": details}},
+        headers=headers,
     )
 
 
 def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(AppError)
     async def handle_app_error(_: Request, exc: AppError) -> JSONResponse:
-        return error_response(exc.status_code, exc.code, exc.message)
+        return error_response(exc.status_code, exc.code, exc.message, headers=exc.headers)
 
     @app.exception_handler(RequestValidationError)
     async def handle_validation_error(_: Request, exc: RequestValidationError) -> JSONResponse:

@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     access_token_minutes: int = 15
     refresh_token_days: int = 7
     cookie_secure: bool = False
+    login_max_failures: int = 5
+    login_lockout_minutes: int = 15
 
     manager_email: str | None = None
     manager_password: str | None = None

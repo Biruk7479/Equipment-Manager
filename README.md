@@ -102,6 +102,8 @@ A request flows **controller → service → repository → model**. Controllers
 
 **Authentication.** Login issues a short-lived access token (15 min) and a refresh token (7 days), both JWTs in `httpOnly`, `SameSite=Lax` cookies. Refresh tokens are stored server-side and rotated on every use, so logout and password changes revoke sessions immediately. Changing your password signs out all your other sessions. The frontend refreshes transparently when a request returns 401.
 
+**Sign-in rate limiting.** After 5 failed sign-ins for an email within 15 minutes, further attempts for that email return `429` with a `Retry-After` header until the oldest failure expires. Unknown emails are limited the same way, so the response doesn't reveal which accounts exist. The limit is per account because the app can't see a trustworthy client IP behind the Next.js proxy. In production, add per-IP limits at the reverse proxy or load balancer.
+
 **Authorization** is checked on the server for every endpoint:
 - Only managers can create or edit equipment, review requests, or manage users.
 - Only employees can submit requests.
