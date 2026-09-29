@@ -15,6 +15,10 @@ LOAD_RELATIONS = (
 )
 
 
+def get_by_id(db: Session, request_id: int, lock: bool = False) -> EquipmentRequest | None:
+    return db.get(EquipmentRequest, request_id, with_for_update=lock)
+
+
 def get_with_relations(db: Session, request_id: int) -> EquipmentRequest | None:
     return db.scalar(
         select(EquipmentRequest).options(*LOAD_RELATIONS).where(EquipmentRequest.id == request_id)

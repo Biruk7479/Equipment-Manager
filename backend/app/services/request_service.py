@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -8,6 +9,12 @@ from app.models import EquipmentRequest, RequestHistory, RequestStatus, Role, Us
 from app.repositories import request_repository
 from app.schemas.request import RequestCreateIn, RequestQuery
 from app.services.equipment_service import get_equipment
+
+ALLOWED_TRANSITIONS = {
+    RequestStatus.PENDING: {RequestStatus.APPROVED, RequestStatus.REJECTED},
+    RequestStatus.APPROVED: set(),
+    RequestStatus.REJECTED: set(),
+}
 
 
 def list_requests(db: Session, user: User, query: RequestQuery) -> dict[str, Any]:
@@ -47,3 +54,61 @@ def create_request(db: Session, user: User, data: RequestCreateIn) -> EquipmentR
     )
     db.commit()
     return get_request(db, user, request.id)
+
+
+def approve_request(
+    db: Session, manager: User, request_id: int, comment: str | None
+) -> EquipmentRequest:
+    request = _lock_for_transition(db, request_id, RequestStatus.APPROVED)
+    equipment = get_equipment(db, request.equipment_id, lock=True)
+    if equipment.available_quantity < request.quantity:
+        raise ConflictError(
+            f"Insufficient stock: {equipment.available_quantity} available, "
+            f"{request.quantity} requested",
+            "insufficient_stock",
+        )
+    equipment.available_quantity -= request.quantity
+    _apply_transition(db, request, manager, RequestStatus.APPROVED, comment)
+    db.commit()
+    return get_request(db, manager, request_id)
+
+
+def reject_request(db: Session, manager: User, request_id: int, comment: str) -> EquipmentRequest:
+    request = _lock_for_transition(db, request_id, RequestStatus.REJECTED)
+    _apply_transition(db, request, manager, RequestStatus.REJECTED, comment)
+    db.commit()
+    return get_request(db, manager, request_id)
+
+
+def _lock_for_transition(db: Session, request_id: int, target: RequestStatus) -> EquipmentRequest:
+    request = request_repository.get_by_id(db, request_id, lock=True)
+    if request is None:
+        raise NotFoundError("Request not found")
+    if target not in ALLOWED_TRANSITIONS[request.status]:
+        raise ConflictError(
+            f"A {request.status} request cannot be {target}", "invalid_status_transition"
+        )
+    return request
+
+
+def _apply_transition(
+    db: Session,
+    request: EquipmentRequest,
+    actor: User,
+    new_status: RequestStatus,
+    comment: str | None,
+) -> None:
+    request_repository.add_history(
+        db,
+        RequestHistory(
+            request_id=request.id,
+            previous_status=request.status,
+            new_status=new_status,
+            actor_id=actor.id,
+            comment=comment,
+        ),
+    )
+    request.status = new_status
+    request.reviewer_id = actor.id
+    request.review_comment = comment
+    request.reviewed_at = datetime.now(UTC)
