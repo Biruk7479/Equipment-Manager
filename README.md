@@ -4,6 +4,8 @@ Employees request workplace equipment (laptops, monitors, phones, keyboards, hea
 
 **Stack:** Next.js (App Router) · FastAPI · PostgreSQL · SQLAlchemy · Alembic · Docker Compose
 
+![Manager dashboard showing stock totals, request counts by status, and a requests-by-category chart](docs/screenshots/dashboard.png)
+
 ## Quick start
 
 Requires Docker with Compose.
@@ -33,6 +35,32 @@ On first start the API runs migrations and seeds a manager from `MANAGER_EMAIL` 
 - Equipment lists support search by name, filtering by category and availability, and pagination.
 - Request lists filter by status, employee and equipment, sort by creation date, and paginate.
 - The dashboard shows totals, status counts, and a requests-by-category chart with a table view.
+
+## Screenshots
+
+**Reviewing a request.** The manager sees the justification, the requested quantity against current stock, and approves or rejects it. A rejection requires a comment.
+
+![Manager reviewing a pending laptop request with the stock check and a comment box](docs/screenshots/review.png)
+
+**Audit trail.** Every status change records who made it, when, and the manager's comment. History can't be edited or deleted.
+
+![Approved request showing reviewer, manager comment, and the pending-to-approved history](docs/screenshots/history.png)
+
+**All requests.** Managers filter by status, employee and equipment, sort by date, and jump straight to pending reviews.
+
+![Manager request list with status badges, filters and review buttons](docs/screenshots/requests.png)
+
+**Equipment.** Search by name, filter by category and availability. Only managers can add or edit items.
+
+![Equipment inventory with categories, available quantities and an out-of-stock item](docs/screenshots/equipment.png)
+
+**Employee view on mobile.** Employees see their own requests and counts. The layout adapts to small screens.
+
+<p align="center">
+  <img src="docs/screenshots/mobile-dashboard.png" width="280" alt="Employee dashboard on a phone">
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/mobile-requests.png" width="280" alt="Employee's own requests on a phone">
+</p>
 
 ## Project structure
 
