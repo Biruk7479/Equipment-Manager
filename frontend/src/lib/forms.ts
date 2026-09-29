@@ -5,7 +5,14 @@ export function setServerErrors<T extends FieldValues>(
   error: unknown,
   setError: UseFormSetError<T>,
   fields: ReadonlyArray<Path<T>>,
+  codeFields: Partial<Record<string, Path<T>>> = {},
 ) {
+  const codeField = error instanceof ApiError ? codeFields[error.code] : undefined;
+  if (codeField) {
+    setError(codeField, { message: errorMessage(error) });
+    return;
+  }
+
   const unmatched: string[] = [];
   if (error instanceof ApiError && error.details) {
     for (const { field, message } of error.details) {
