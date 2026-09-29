@@ -23,7 +23,10 @@ export function RegisterForm() {
   const onSubmit = handleSubmit((values) =>
     registerUser.mutate(values, {
       onSuccess: () => router.replace("/dashboard"),
-      onError: (error) => setServerErrors(error, setError, ["full_name", "email", "password"]),
+      onError: (error) =>
+        setServerErrors(error, setError, ["full_name", "email", "password"], {
+          email_taken: "email",
+        }),
     }),
   );
 
