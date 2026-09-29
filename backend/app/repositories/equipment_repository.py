@@ -36,3 +36,10 @@ def list_page(db: Session, query: EquipmentQuery) -> dict[str, Any]:
     elif query.available is False:
         stmt = stmt.where(Equipment.available_quantity == 0)
     return paginate(db, stmt, query)
+
+
+def stock_totals(db: Session) -> tuple[int, int]:
+    count, available = db.execute(
+        select(func.count(Equipment.id), func.coalesce(func.sum(Equipment.available_quantity), 0))
+    ).one()
+    return count, available
