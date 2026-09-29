@@ -78,3 +78,13 @@ def test_search_filter_and_paginate(manager: TestClient) -> None:
     page = manager.get("/api/v1/equipment", params={"page": 2, "page_size": 2}).json()
     assert page["total"] == 3
     assert [item["name"] for item in page["items"]] == ["ThinkPad X1"]
+
+
+def test_list_is_sorted_by_name_ignoring_case(manager: TestClient) -> None:
+    create(manager, name="iPhone 15", category="mobile_phone")
+    create(manager, name="Zebra scanner", category="mobile_phone")
+    create(manager)
+
+    names = [item["name"] for item in manager.get("/api/v1/equipment").json()["items"]]
+
+    assert names == ["iPhone 15", "ThinkPad X1", "Zebra scanner"]

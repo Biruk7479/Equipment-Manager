@@ -26,7 +26,7 @@ def add(db: Session, equipment: Equipment) -> Equipment:
 
 
 def list_page(db: Session, query: EquipmentQuery) -> dict[str, Any]:
-    stmt = select(Equipment).order_by(Equipment.name)
+    stmt = select(Equipment).order_by(func.lower(Equipment.name), Equipment.id)
     if query.search:
         stmt = stmt.where(Equipment.name.ilike(f"%{query.search}%"))
     if query.category:
