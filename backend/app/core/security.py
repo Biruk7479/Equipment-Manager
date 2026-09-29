@@ -21,9 +21,11 @@ def verify_password(password: str, password_hash: str) -> bool:
     return password_hasher.verify(password, password_hash)
 
 
-def create_access_token(user_id: int) -> str:
+def create_access_token(user_id: int, session_id: uuid.UUID) -> str:
     expires_at = datetime.now(UTC) + timedelta(minutes=settings.access_token_minutes)
-    return _encode({"sub": str(user_id), "type": "access", "exp": expires_at})
+    return _encode(
+        {"sub": str(user_id), "sid": str(session_id), "type": "access", "exp": expires_at}
+    )
 
 
 def create_refresh_token(user_id: int, token_id: uuid.UUID, expires_at: datetime) -> str:

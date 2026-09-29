@@ -50,18 +50,19 @@ def authenticate(db: Session, email: str, password: str) -> User:
     return user
 
 
-def issue_tokens(db: Session, user: User) -> TokenPair:
+def issue_tokens(db: Session, user: User, session_id: uuid.UUID | None = None) -> TokenPair:
     token = refresh_token_repository.add(
         db,
         RefreshToken(
             id=uuid.uuid4(),
+            session_id=session_id or uuid.uuid4(),
             user_id=user.id,
             expires_at=datetime.now(UTC) + timedelta(days=settings.refresh_token_days),
         ),
     )
     db.commit()
     return TokenPair(
-        access_token=create_access_token(user.id),
+        access_token=create_access_token(user.id, token.session_id),
         refresh_token=create_refresh_token(user.id, token.id, token.expires_at),
     )
 
@@ -75,7 +76,22 @@ def rotate_refresh_token(db: Session, raw_token: str) -> tuple[User, TokenPair]:
     if user is None:
         raise UnauthorizedError("Session has expired", "session_expired")
     token.revoked_at = datetime.now(UTC)
-    return user, issue_tokens(db, user)
+    return user, issue_tokens(db, user, token.session_id)
+
+
+def get_session_user(db: Session, access_token: str) -> User:
+    payload = decode_token(access_token, "access")
+    user = user_repository.get_by_id(db, int(payload["sub"]))
+    session_id = payload.get("sid")
+    if (
+        user is None
+        or session_id is None
+        or not refresh_token_repository.session_is_active(
+            db, uuid.UUID(session_id), user.id, datetime.now(UTC)
+        )
+    ):
+        raise UnauthorizedError("Not authenticated")
+    return user
 
 
 def revoke_refresh_token(db: Session, raw_token: str) -> None:

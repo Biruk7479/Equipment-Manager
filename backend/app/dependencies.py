@@ -4,9 +4,9 @@ from fastapi import Cookie, Depends
 from sqlalchemy.orm import Session
 
 from app.core.errors import ForbiddenError, UnauthorizedError
-from app.core.security import decode_token
 from app.db.session import get_db
 from app.models import Role, User
+from app.services import auth_service
 
 DbSession = Annotated[Session, Depends(get_db)]
 
@@ -14,11 +14,7 @@ DbSession = Annotated[Session, Depends(get_db)]
 def get_current_user(db: DbSession, access_token: Annotated[str | None, Cookie()] = None) -> User:
     if not access_token:
         raise UnauthorizedError("Not authenticated")
-    payload = decode_token(access_token, "access")
-    user = db.get(User, int(payload["sub"]))
-    if user is None:
-        raise UnauthorizedError("Not authenticated")
-    return user
+    return auth_service.get_session_user(db, access_token)
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
