@@ -23,6 +23,11 @@ docker compose up --build
 
 On first start the API runs migrations and seeds a manager from `MANAGER_EMAIL` / `MANAGER_PASSWORD` (default `manager@example.com` / `ChangeMe123!`). New sign-ups are employees. Managers can create more employee or manager accounts from the **Users** page.
 
+Before deploying anywhere public:
+- Change `MANAGER_PASSWORD`.
+- Use a `JWT_SECRET` of at least 32 characters. The API refuses to start with a shorter one.
+- Serve the app over HTTPS with `COOKIE_SECURE=true`.
+
 ## Features
 
 | Area | Employee | Manager |
